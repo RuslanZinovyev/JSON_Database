@@ -21,6 +21,12 @@ public class ClientArgs {
     )
     private String value;
 
+    @Parameter(
+            names = "-in",
+            description = "The file with request"
+    )
+    private String file;
+
     public String getType() {
         return type;
     }
@@ -32,4 +38,6 @@ public class ClientArgs {
     public String getValue() {
         return value;
     }
+
+    public String getFile() { return file; }
 }

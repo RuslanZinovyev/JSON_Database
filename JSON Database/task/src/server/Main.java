@@ -9,7 +9,8 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Main {
     private static final String ADDRESS = "127.0.0.1";
@@ -24,10 +25,12 @@ public class Main {
     public static final String NO_SUCH_KEY = "No such key";
 
     public static void main(String[] args) {
-        HashMap<String, String> database = new HashMap<>();
-
         System.out.println(SERVER_STARTED);
-        try (ServerSocket serverSocket = new ServerSocket(PORT, 50, InetAddress.getByName(ADDRESS))) {
+        DatabaseService databaseService = new DatabaseService();
+        int poolSize = Runtime.getRuntime().availableProcessors();
+        ExecutorService executor = Executors.newFixedThreadPool(poolSize);
+
+        executor.submit(() -> { try (ServerSocket serverSocket = new ServerSocket(PORT, 50, InetAddress.getByName(ADDRESS))) {
             while (!serverSocket.isClosed()) {
                 try (Socket socket = serverSocket.accept();
                      DataInputStream input = new DataInputStream(socket.getInputStream());
@@ -40,39 +43,43 @@ public class Main {
 
                     Response response = new Response();
                     String serverResponse;
+                    String databaseResponse;
 
                     switch (request.getType()) {
                         case SET:
                             if (request.getValue() != null) {
-                                database.put(request.getKey(), request.getValue());
+                                databaseService.writeFileAsString(request.getKey(), request.getValue(), gson);
                                 response.setResponse(OK);
                                 serverResponse = gson.toJson(response);
                                 output.writeUTF(serverResponse);
                                 break;
                             }
                         case GET:
-                            if (database.get(request.getKey()) == null) {
+                            databaseResponse = databaseService.readFromDatabase(request.getKey());
+                            if (databaseResponse != null) {
+                                Response resp = gson.fromJson(databaseResponse, Response.class);
+                                response.setResponse(OK);
+                                response.setValue(resp.getValue());
+                            } else {
                                 response.setResponse(ERROR);
                                 response.setReason(NO_SUCH_KEY);
-                            } else {
-                                response.setResponse(OK);
-                                response.setValue(database.get(request.getKey()));
                             }
                             serverResponse = gson.toJson(response);
                             output.writeUTF(serverResponse);
                             break;
                         case DELETE:
-                            if (database.get(request.getKey()) == null) {
+                            databaseResponse = databaseService.readFromDatabase(request.getKey());
+                            if (databaseResponse != null) {
+                                databaseService.removeFromDatabase();
+                                response.setResponse(OK);
+                            } else {
                                 response.setResponse(ERROR);
                                 response.setReason(NO_SUCH_KEY);
-                            } else {
-                                database.remove(request.getKey());
-                                response.setResponse(OK);
                             }
+
                             serverResponse = gson.toJson(response);
                             output.writeUTF(serverResponse);
                             break;
-
                         case EXIT:
                             serverSocket.close();
                             response.setResponse(OK);
@@ -83,9 +90,8 @@ public class Main {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
-        }
+            System.out.println(e);
+        }});
     }
-
 }
 
