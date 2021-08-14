@@ -39,7 +39,7 @@ public class DatabaseService {
     public String readFromDatabase(String key) {
         File databaseFile = new File(DATABASE_PATH);
         String result = null;
-        try(Scanner scanner = new Scanner(databaseFile)) {
+        try (Scanner scanner = new Scanner(databaseFile)) {
             readLock.lock();
             while (scanner.hasNextLine()) {
                 String str = scanner.nextLine();

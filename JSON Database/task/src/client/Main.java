@@ -27,9 +27,9 @@ public class Main {
         String value = clientArgs.getValue();
         String file = clientArgs.getFile();
 
-        try(Socket socket = new Socket(ADDRESS, PORT);
-            DataInputStream input = new DataInputStream(socket.getInputStream());
-            DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+        try (Socket socket = new Socket(ADDRESS, PORT);
+             DataInputStream input = new DataInputStream(socket.getInputStream());
+             DataOutputStream output = new DataOutputStream(socket.getOutputStream());
         ) {
             System.out.println(CLIENT_STARTED);
             Request request = new Request();

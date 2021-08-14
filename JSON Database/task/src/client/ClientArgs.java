@@ -39,5 +39,7 @@ public class ClientArgs {
         return value;
     }
 
-    public String getFile() { return file; }
+    public String getFile() {
+        return file;
+    }
 }

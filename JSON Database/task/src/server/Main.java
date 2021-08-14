@@ -30,68 +30,70 @@ public class Main {
         int poolSize = Runtime.getRuntime().availableProcessors();
         ExecutorService executor = Executors.newFixedThreadPool(poolSize);
 
-        executor.submit(() -> { try (ServerSocket serverSocket = new ServerSocket(PORT, 50, InetAddress.getByName(ADDRESS))) {
-            while (!serverSocket.isClosed()) {
-                try (Socket socket = serverSocket.accept();
-                     DataInputStream input = new DataInputStream(socket.getInputStream());
-                     DataOutputStream output = new DataOutputStream(socket.getOutputStream())
-                ) {
-                    String clientInput = input.readUTF();
+        executor.submit(() -> {
+            try (ServerSocket serverSocket = new ServerSocket(PORT, 50, InetAddress.getByName(ADDRESS))) {
+                while (!serverSocket.isClosed()) {
+                    try (Socket socket = serverSocket.accept();
+                         DataInputStream input = new DataInputStream(socket.getInputStream());
+                         DataOutputStream output = new DataOutputStream(socket.getOutputStream())
+                    ) {
+                        String clientInput = input.readUTF();
 
-                    Gson gson = new Gson();
-                    Request request = gson.fromJson(clientInput, Request.class);
+                        Gson gson = new Gson();
+                        Request request = gson.fromJson(clientInput, Request.class);
 
-                    Response response = new Response();
-                    String serverResponse;
-                    String databaseResponse;
+                        Response response = new Response();
+                        String serverResponse;
+                        String databaseResponse;
 
-                    switch (request.getType()) {
-                        case SET:
-                            if (request.getValue() != null) {
-                                databaseService.writeFileAsString(request.getKey(), request.getValue(), gson);
+                        switch (request.getType()) {
+                            case SET:
+                                if (request.getValue() != null) {
+                                    databaseService.writeFileAsString(request.getKey(), request.getValue(), gson);
+                                    response.setResponse(OK);
+                                    serverResponse = gson.toJson(response);
+                                    output.writeUTF(serverResponse);
+                                    break;
+                                }
+                            case GET:
+                                databaseResponse = databaseService.readFromDatabase(request.getKey());
+                                if (databaseResponse != null) {
+                                    Response resp = gson.fromJson(databaseResponse, Response.class);
+                                    response.setResponse(OK);
+                                    response.setValue(resp.getValue());
+                                } else {
+                                    response.setResponse(ERROR);
+                                    response.setReason(NO_SUCH_KEY);
+                                }
+                                serverResponse = gson.toJson(response);
+                                output.writeUTF(serverResponse);
+                                break;
+                            case DELETE:
+                                databaseResponse = databaseService.readFromDatabase(request.getKey());
+                                if (databaseResponse != null) {
+                                    databaseService.removeFromDatabase();
+                                    response.setResponse(OK);
+                                } else {
+                                    response.setResponse(ERROR);
+                                    response.setReason(NO_SUCH_KEY);
+                                }
+
+                                serverResponse = gson.toJson(response);
+                                output.writeUTF(serverResponse);
+                                break;
+                            case EXIT:
+                                serverSocket.close();
                                 response.setResponse(OK);
                                 serverResponse = gson.toJson(response);
                                 output.writeUTF(serverResponse);
                                 break;
-                            }
-                        case GET:
-                            databaseResponse = databaseService.readFromDatabase(request.getKey());
-                            if (databaseResponse != null) {
-                                Response resp = gson.fromJson(databaseResponse, Response.class);
-                                response.setResponse(OK);
-                                response.setValue(resp.getValue());
-                            } else {
-                                response.setResponse(ERROR);
-                                response.setReason(NO_SUCH_KEY);
-                            }
-                            serverResponse = gson.toJson(response);
-                            output.writeUTF(serverResponse);
-                            break;
-                        case DELETE:
-                            databaseResponse = databaseService.readFromDatabase(request.getKey());
-                            if (databaseResponse != null) {
-                                databaseService.removeFromDatabase();
-                                response.setResponse(OK);
-                            } else {
-                                response.setResponse(ERROR);
-                                response.setReason(NO_SUCH_KEY);
-                            }
-
-                            serverResponse = gson.toJson(response);
-                            output.writeUTF(serverResponse);
-                            break;
-                        case EXIT:
-                            serverSocket.close();
-                            response.setResponse(OK);
-                            serverResponse = gson.toJson(response);
-                            output.writeUTF(serverResponse);
-                            break;
+                        }
                     }
                 }
+            } catch (IOException e) {
+                System.out.println(e);
             }
-        } catch (IOException e) {
-            System.out.println(e);
-        }});
+        });
     }
 }
 
