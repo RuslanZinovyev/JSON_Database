@@ -2,61 +2,66 @@ package client;
 
 import com.beust.jcommander.JCommander;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParser;
 
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.Socket;
-import java.util.Scanner;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+import static client.ClientArgs.*;
 
 public class Main {
     private static final String ADDRESS = "127.0.0.1";
     private static final int PORT = 34522;
-    public static final String SENT = "Sent: ";
-    public static final String RECEIVED = "Received: ";
-    public static final String CLIENT_STARTED = "Client started!";
-    public static final String PATH_TO_CLIENT_FILE = "./src/client/data/";
 
     public static void main(String[] args) {
         ClientArgs clientArgs = new ClientArgs();
-        JCommander helloCmd = JCommander.newBuilder()
+        Gson gson = new GsonBuilder().create();
+
+        JCommander.newBuilder()
                 .addObject(clientArgs)
-                .build();
-        helloCmd.parse(args);
+                .build()
+                .parse(args);
 
         String type = clientArgs.getType();
         String key = clientArgs.getKey();
         String value = clientArgs.getValue();
         String file = clientArgs.getFile();
 
-        try (Socket socket = new Socket(ADDRESS, PORT);
-             DataInputStream input = new DataInputStream(socket.getInputStream());
-             DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+        try (
+                Socket socket = new Socket(ADDRESS, PORT);
+                DataInputStream input = new DataInputStream(socket.getInputStream());
+                DataOutputStream output = new DataOutputStream(socket.getOutputStream());
         ) {
             System.out.println(CLIENT_STARTED);
+
             Request request = new Request();
-            Gson gson = new Gson();
             String requestJson;
+
             if (type != null && key != null) {
                 request.setType(type);
-                request.setKey(key);
+                request.setKey(JsonParser.parseString(gson.toJson(key)));
             }
             if (value != null) {
-                request.setValue(value);
+                request.setValue(JsonParser.parseString(gson.toJson(value)));
 
             }
             if (file != null) {
                 String path = PATH_TO_CLIENT_FILE + file;
-                File fileRequest = new File(path);
-                try (Scanner scanner = new Scanner(fileRequest)) {
-                    request = gson.fromJson(scanner.nextLine(), Request.class);
-                } catch (FileNotFoundException e) {
-                    System.out.println("No file found: " + path);
-                }
+                String inputRequest = new String(Files.readAllBytes(Paths.get(path)));
+                request = gson.fromJson(inputRequest, Request.class);
             }
+
             requestJson = gson.toJson(request);
             output.writeUTF(requestJson);
+
             System.out.println(SENT + requestJson);
-            String resp = input.readUTF();
-            System.out.println(RECEIVED + resp);
+            System.out.println(RECEIVED + input.readUTF());
+
         } catch (IOException e) {
             e.printStackTrace();
         }

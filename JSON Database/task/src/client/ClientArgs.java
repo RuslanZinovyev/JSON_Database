@@ -3,6 +3,11 @@ package client;
 import com.beust.jcommander.Parameter;
 
 public class ClientArgs {
+    public static final String SENT = "Sent: ";
+    public static final String RECEIVED = "Received: ";
+    public static final String CLIENT_STARTED = "Client started!";
+    public static final String PATH_TO_CLIENT_FILE = "./src/client/data/";
+
     @Parameter(
             names = "-t",
             description = "Type of the message"
@@ -23,7 +28,7 @@ public class ClientArgs {
 
     @Parameter(
             names = "-in",
-            description = "The file with request"
+            description = "File containing the request as JSON string"
     )
     private String file;
 

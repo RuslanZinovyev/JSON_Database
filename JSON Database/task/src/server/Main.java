@@ -2,6 +2,7 @@ package server;
 
 import client.Request;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -12,21 +13,16 @@ import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static server.DatabaseService.*;
+
 public class Main {
     private static final String ADDRESS = "127.0.0.1";
     private static final int PORT = 34522;
-    public static final String SET = "set";
-    public static final String GET = "get";
-    public static final String DELETE = "delete";
-    public static final String EXIT = "exit";
-    public static final String OK = "OK";
-    public static final String ERROR = "ERROR";
-    public static final String SERVER_STARTED = "Server started!";
-    public static final String NO_SUCH_KEY = "No such key";
 
     public static void main(String[] args) {
         System.out.println(SERVER_STARTED);
         DatabaseService databaseService = new DatabaseService();
+        databaseService.init();
         int poolSize = Runtime.getRuntime().availableProcessors();
         ExecutorService executor = Executors.newFixedThreadPool(poolSize);
 
@@ -37,47 +33,31 @@ public class Main {
                          DataInputStream input = new DataInputStream(socket.getInputStream());
                          DataOutputStream output = new DataOutputStream(socket.getOutputStream())
                     ) {
-                        String clientInput = input.readUTF();
 
                         Gson gson = new Gson();
-                        Request request = gson.fromJson(clientInput, Request.class);
+                        Request request = gson.fromJson(input.readUTF(), Request.class);
 
                         Response response = new Response();
                         String serverResponse;
-                        String databaseResponse;
+                        JsonElement databaseResponse;
 
                         switch (request.getType()) {
                             case SET:
-                                if (request.getValue() != null) {
-                                    databaseService.writeFileAsString(request.getKey(), request.getValue(), gson);
-                                    response.setResponse(OK);
-                                    serverResponse = gson.toJson(response);
-                                    output.writeUTF(serverResponse);
-                                    break;
-                                }
+                                databaseService.setValueByKey(request.getKey(), request.getValue());
+                                response.setResponse(OK);
+                                serverResponse = gson.toJson(response);
+                                output.writeUTF(serverResponse);
+                                break;
                             case GET:
-                                databaseResponse = databaseService.readFromDatabase(request.getKey());
-                                if (databaseResponse != null) {
-                                    Response resp = gson.fromJson(databaseResponse, Response.class);
-                                    response.setResponse(OK);
-                                    response.setValue(resp.getValue());
-                                } else {
-                                    response.setResponse(ERROR);
-                                    response.setReason(NO_SUCH_KEY);
-                                }
+                                databaseResponse = databaseService.getValueByKey(request.getKey());
+                                response.setResponse(OK);
+                                response.setValue(databaseResponse);
                                 serverResponse = gson.toJson(response);
                                 output.writeUTF(serverResponse);
                                 break;
                             case DELETE:
-                                databaseResponse = databaseService.readFromDatabase(request.getKey());
-                                if (databaseResponse != null) {
-                                    databaseService.removeFromDatabase();
-                                    response.setResponse(OK);
-                                } else {
-                                    response.setResponse(ERROR);
-                                    response.setReason(NO_SUCH_KEY);
-                                }
-
+                                databaseService.removeValueByKey(request.getKey());
+                                response.setResponse(OK);
                                 serverResponse = gson.toJson(response);
                                 output.writeUTF(serverResponse);
                                 break;

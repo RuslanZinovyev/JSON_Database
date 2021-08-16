@@ -1,9 +1,11 @@
 package client;
 
+import com.google.gson.JsonElement;
+
 public class Request {
     private String type;
-    private String key;
-    private String value;
+    private JsonElement key;
+    private JsonElement value;
 
     public String getType() {
         return type;
@@ -13,19 +15,20 @@ public class Request {
         this.type = type;
     }
 
-    public String getKey() {
+    public JsonElement getKey() {
         return key;
     }
 
-    public void setKey(String key) {
+    public void setKey(JsonElement key) {
         this.key = key;
     }
 
-    public String getValue() {
+    public JsonElement getValue() {
         return value;
     }
 
-    public void setValue(String value) {
+    public void setValue(JsonElement value) {
         this.value = value;
     }
+
 }
